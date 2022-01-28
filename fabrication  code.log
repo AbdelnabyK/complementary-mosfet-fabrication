@@ -1,0 +1,122 @@
+
+math coord.ucs
+line x location= 0.0      spacing=  3<nm> tag= SiTop       
+line x location= 10<nm>   spacing=  15<nm>                 
+line x location= 50<nm>   spacing= 60<nm>                  
+line x location= 300<nm>  spacing= 100<nm>                  
+line x location= 0.5<um>  spacing= 500<nm>
+line x location= 2.5<um>  spacing= 0.2<um> tag= SiBottom    
+
+line y location= -1.55<um>    spacing=100.0<nm> tag= left  
+line y location=  1.55<um>    spacing=10.0<nm>  tag= Right  
+
+region Silicon xlo= SiTop xhi= SiBottom ylo= left yhi= Right
+
+init concentration= 1.6e+16<cm-3> field= Boron
+
+AdvancedCalibration
+#-----Masks---
+mask name=sti segments= {-1.35 -0.6 0.6 2.35} negative
+mask name=pmos segments= {-1.55 0.6 1.35 1.65} negative
+mask name=nmos segments= {-1.65 -1.35 -1.6 1.55} negative
+mask name=ndoping segments= {-1.55 -1.35 -1.1 -0.85 -0.6 1.55} negative
+mask name=pdoping segments= {-1.55 0.6 0.85 1.1 1.35 1.55} negative
+mask name=pgate segments= {-1.55 .85 1.2 1.55} negative
+mask name=ngate segments= {-1.55 -1.1 -0.85 1.55} negative
+mask name=gates segments= {-1.55 -1.1 -0.85 0.85 1.1 1.55} negative 
+
+
+#Oxide--------------------------
+struct tdr= substrate
+gas_flow clear
+gas_flow name= O2_0.1_N2_10 pressure= 1.0<atm> flowO2= 0.1<l/min>  flowN2= 10.0<l/min>
+gas_flow name= H2O pressure= 1.0<atm>           flowH2O= 1.0<l/min>
+temp_ramp name= PadOxide clear
+temp_ramp name= PadOxide time= (900.0-700.0)/75<s> \
+temperature= 700.0<C> ramprate= 75<K/s> gas.flow= O2_0.1_N2_10
+temp_ramp name= PadOxide time= 40<min> \
+temperature= 900.0<C> hold                gas.flow= H2O
+temp_ramp name= PadOxide time= (900.0-700.0)/20<s> \
+temperature= 900.0<C> ramprate= -20<K/s> gas.flow= O2_0.1_N2_10
+diffuse temp.ramp= PadOxide
+
+
+set PadOxThick [MeasureOx Silicon 2 0.0 ]
+puts "Thickness of PadOx is: $PadOxThick um"
+
+#--- Nitride layer deposition ----------------------------------------
+set     NitrideThick 0.08
+deposit Nitride isotropic thickness= $NitrideThick
+
+#--- STI Lithography -------------------------------------------------
+photo mask= sti thickness= 1
+
+#--- Shallow trench etch ---------------------------------------------
+etch Nitride anisotropic thickness= $NitrideThick*1.5 
+etch Oxide anisotropic thickness= $PadOxThick*1.5
+strip      Photoresist
+etch Silicon type= trapezoidal thickness= 0.600 angle= 90
+
+#--- Oxide liner growth ----------------------------------------------
+gas_flow clear
+gas_flow name= H2O  pressure= 1.0<atm> flowH2O= 1.0<l/min>
+temp_ramp name= Liner_Oxide clear
+temp_ramp name= Liner_Oxide time= 18.97<min> temperature= 900.0<C> gas.flow= H2O
+diffuse temp.ramp= Liner_Oxide
+
+#---  deposition ---------------------------------------------
+deposit Oxide isotropic thickness= 0.6
+etch cmp coord= -0.04
+
+#--- Nitride strip/reflect -------------------------------------------
+strip Nitride
+struct tdr= shallow_trench_isolated.
+#the trench is done--------------------------------
+#ion implementation for n well, N+
+
+photo mask= pmos thickness= 0.5
+implant Phosphorus dose= 1e13<cm-2> energy= 350<keV> tilt= 0<degree> rotation= 0<degree>  
+strip Resist
+diffuse temperature= 1000<C> time= 4.267<hr> 
+struct tdr= NwellStructure
+
+#chennels doping , nmos----------------------------------------
+photo mask= nmos thickness= 0.5
+implant Boron dose= 3.084e12<cm-2> energy= 5.1361<keV> tilt= 0<degree> rotation= 0<degree>  
+strip Resist
+#chennels doping , pmos----------------------------------------
+
+photo mask= pmos thickness= 0.5
+implant Arsenic dose= 2.8e13<cm-2> energy= 52.04<keV> tilt= 0<degree> rotation= 0<degree>  
+strip Resist
+
+
+
+photo mask= gates thickness= 0.5
+
+gas_flow clear
+gas_flow name= O2_0.1_N2_10 pressure= 1.0<atm> flowO2= 0.1<l/min>  flowN2= 10.0<l/min>
+gas_flow name= H2O pressure= 1.0<atm>           flowH2O= 1.0<l/min>
+temp_ramp name= PadOxide clear
+temp_ramp name= PadOxide time= (1000.0-700.0)/75<s> \
+temperature= 700.0<C> ramprate= 75<K/s> gas.flow= O2_0.1_N2_10
+temp_ramp name= PadOxide time= 40<min> \
+temperature= 1000.0<C> hold                gas.flow= H2O
+temp_ramp name= PadOxide time= (1000.0-700.0)/20<s> \
+temperature= 900.0<C> ramprate= -20<K/s> gas.flow= O2_0.1_N2_10
+diffuse temp.ramp= PadOxide
+strip Resist
+struct tdr= GateOxide
+deposit material = {PloySilicon} isotropic thickness = 0.4
+photo mask = gates thickness = 0.5
+etch material = {PloySilicon} anisotropic thickness = 0.42
+strip Resist
+struct tdr = PloySiliconGates
+
+
+
+
+
+
+
+exit
